@@ -1,1 +1,7 @@
-command: ["uvicorn", "app:app"]
+# How Databricks Apps STARTS the program (databricks.yml says what to DEPLOY).
+command: ["uvicorn", "app:app", "--host", "0.0.0.0", "--port", "8000"]
+
+env:
+  # Which Lakebase compute endpoint the backend connects to.
+  - name: LAKEBASE_ENDPOINT
+    value: "projects/matchmaker/branches/production/endpoints/primary"

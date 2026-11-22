@@ -1,0 +1,36 @@
+# Declarative Automation Bundle: what Databricks should create for Matchmaker.
+# (app.yaml = how to START the program; this file = what to DEPLOY in the workspace.)
+
+bundle:
+  name: matchmaker
+
+# Upload rules. Files in .gitignore are skipped by default; the built React app is
+# git-ignored (it's generated), so we explicitly include it. Build it first:
+#   (cd frontend && npm run build)
+sync:
+  include:
+    - frontend/dist/**
+  exclude:
+    - frontend/node_modules/**
+    - scripts/**
+
+resources:
+  apps:
+    matchmaker:
+      name: matchmaker
+      description: "Skill & Knowledge Matchmaker - find peers across client engagements"
+      source_code_path: .
+      resources:
+        # Connect the app to the existing Lakebase database (created in the dashboard).
+        - name: database
+          postgres:
+            branch: projects/matchmaker/branches/production
+            database: projects/matchmaker/branches/production/databases/databricks-postgres
+            permission: CAN_CONNECT_AND_CREATE
+
+targets:
+  dev:
+    default: true
+    workspace:
+      # Pinned to the Free Edition workspace so we can never deploy to the wrong one.
+      host: https://dbc-f84e7376-c50f.cloud.databricks.com
