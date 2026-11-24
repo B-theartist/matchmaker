@@ -118,6 +118,12 @@ targets:
 
       apps:
         matchmaker:
+          permissions:
+            # Anyone signed in to this workspace may OPEN the app (e.g. an interviewer
+            # added as a workspace user). Opening it is all they can do: they can't
+            # edit or redeploy it, and the app itself only lets them edit their own profile.
+            - level: CAN_USE
+              group_name: users
           lifecycle:
             depends_on:
               - resource: postgres_databases.app_db
