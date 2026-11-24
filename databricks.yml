@@ -1,14 +1,28 @@
 # Declarative Automation Bundle: everything Databricks should contain for Matchmaker.
-# (app.yaml = how to START the program; this file = what to DEPLOY in the workspace.)
 #
-#   (cd frontend && npm run build)              # build the React app first
-#   databricks bundle validate -p koantek-free  # is this file correct?
-#   databricks bundle plan     -p koantek-free  # preview changes (look for 0 to delete)
-#   databricks bundle deploy   -p koantek-free  # make the workspace match this file
-#   databricks bundle run matchmaker -p koantek-free   # start the app with the new code
+# Two targets (Free Edition has one workspace, so they live side by side in it):
+#   dev  -> your personal sandbox app "matchmaker-dev" on the Lakebase *dev* branch.
+#           You deploy it by hand from your Mac.
+#   prod -> the real "matchmaker" app on the Lakebase *production* branch.
+#           Deployed by GitHub Actions after a change is merged to main and approved.
+#
+#   (cd frontend && npm run build)                         # build the React app first
+#   databricks bundle validate -t dev -p koantek-free      # is this file correct?
+#   databricks bundle plan     -t prod -p koantek-free     # preview (look for 0 to delete)
+#   databricks bundle deploy   -t dev -p koantek-free      # make the workspace match
+#   databricks bundle run matchmaker -t dev -p koantek-free   # start the app on the new code
 
 bundle:
   name: matchmaker
+
+# Values that differ per target. ${var.x} below is replaced at deploy time.
+variables:
+  app_name:
+    description: Name of the Databricks App (also part of its URL)
+    default: matchmaker
+  lakebase_branch:
+    description: Which Lakebase branch the app reads and writes
+    default: production
 
 # Upload rules. Files in .gitignore are skipped by default; the built React app is
 # git-ignored (it's generated), so we explicitly include it.
@@ -18,60 +32,92 @@ sync:
   exclude:
     - frontend/node_modules/**
     - scripts/**
+    - tests/**
+    - .github/**
 
 resources:
-  # ---------- Lakebase (serverless Postgres) ----------
-  # Created first in the dashboard, then BOUND to this bundle so the bundle manages it.
-  # prevent_destroy: `bundle destroy` refuses to delete the database that holds our data.
-  postgres_projects:
-    matchmaker_db:
-      project_id: matchmaker
-      display_name: matchmaker
-      pg_version: 18
-      lifecycle:
-        prevent_destroy: true
-
-  postgres_branches:
-    production:
-      parent: projects/matchmaker
-      branch_id: production
-      no_expiry: true
-      lifecycle:
-        prevent_destroy: true
-        depends_on:
-          - resource: postgres_projects.matchmaker_db
-
-  postgres_databases:
-    app_db:
-      parent: projects/matchmaker/branches/production
-      database_id: databricks-postgres          # Databricks' resource ID (hyphen)
-      postgres_database: databricks_postgres    # the name inside Postgres (underscore)
-      role: projects/matchmaker/branches/production/roles/braedencasados
-      lifecycle:
-        prevent_destroy: true
-        depends_on:
-          - resource: postgres_branches.production
-
-  # ---------- The app ----------
   apps:
     matchmaker:
-      name: matchmaker
+      name: ${var.app_name}
       description: "Skill & Knowledge Matchmaker - find peers across client engagements"
       source_code_path: .
+      # How Databricks starts the program (this used to live in app.yaml; it moved here
+      # because the database endpoint is different for dev and prod).
+      config:
+        command: ["uvicorn", "app:app", "--host", "0.0.0.0", "--port", "8000"]
+        env:
+          - name: LAKEBASE_ENDPOINT
+            value: projects/matchmaker/branches/${var.lakebase_branch}/endpoints/primary
       resources:
-        # Lets the app's service principal log in to the database above.
+        # Lets the app's service principal log in to the database on that branch.
         - name: database
           postgres:
-            branch: projects/matchmaker/branches/production
-            database: projects/matchmaker/branches/production/databases/databricks-postgres
+            branch: projects/matchmaker/branches/${var.lakebase_branch}
+            database: projects/matchmaker/branches/${var.lakebase_branch}/databases/databricks-postgres
             permission: CAN_CONNECT_AND_CREATE
-      lifecycle:
-        depends_on:
-          - resource: postgres_databases.app_db
 
 targets:
   dev:
+    mode: development     # personal copy: deployed under your user folder, safe to break
     default: true
     workspace:
-      # Pinned to the Free Edition workspace so we can never deploy to the wrong one.
       host: https://dbc-f84e7376-c50f.cloud.databricks.com
+    variables:
+      app_name: matchmaker-dev
+      lakebase_branch: dev
+
+  prod:
+    mode: production      # the real one: only deployed by CI after review
+    workspace:
+      host: https://dbc-f84e7376-c50f.cloud.databricks.com
+      # The CI robot's own folder (not yours, and not the open /Shared folder), so
+      # you AND the robot deploy to the same place and share one record (state) of
+      # what exists. Only the robot and workspace admins can write here.
+      root_path: /Workspace/Users/e1fad51e-498e-4279-bfd8-aca7e272f921/.bundle/${bundle.name}/${bundle.target}
+    permissions:
+      # Who may manage what this target deploys (the app, the bundle folder).
+      - level: CAN_MANAGE
+        group_name: admins   # you (workspace admin) - a group, so no email in the repo
+      - level: CAN_MANAGE    # the GitHub Actions robot (service principal "matchmaker-deployer")
+        service_principal_name: e1fad51e-498e-4279-bfd8-aca7e272f921
+    resources:
+      # Lakebase lives only in prod. It was created in the dashboard first, then BOUND
+      # to this target so the bundle manages it. prevent_destroy: `bundle destroy`
+      # refuses to delete the database that holds our data.
+      postgres_projects:
+        matchmaker_db:
+          project_id: matchmaker
+          display_name: matchmaker
+          pg_version: 18
+          permissions:
+            - level: CAN_MANAGE
+              service_principal_name: e1fad51e-498e-4279-bfd8-aca7e272f921
+          lifecycle:
+            prevent_destroy: true
+
+      postgres_branches:
+        production:
+          parent: projects/matchmaker
+          branch_id: production
+          no_expiry: true
+          lifecycle:
+            prevent_destroy: true
+            depends_on:
+              - resource: postgres_projects.matchmaker_db
+
+      postgres_databases:
+        app_db:
+          parent: projects/matchmaker/branches/production
+          database_id: databricks-postgres          # Databricks' resource ID (hyphen)
+          postgres_database: databricks_postgres    # the name inside Postgres (underscore)
+          role: projects/matchmaker/branches/production/roles/braedencasados
+          lifecycle:
+            prevent_destroy: true
+            depends_on:
+              - resource: postgres_branches.production
+
+      apps:
+        matchmaker:
+          lifecycle:
+            depends_on:
+              - resource: postgres_databases.app_db

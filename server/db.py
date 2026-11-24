@@ -15,7 +15,8 @@ from databricks.sdk import WorkspaceClient
 from psycopg.rows import dict_row
 from psycopg_pool import ConnectionPool
 
-# Which Lakebase compute endpoint to talk to (set in app.yaml / scripts/dev.sh).
+# Which Lakebase compute endpoint to talk to. Deployed: set per target in
+# databricks.yml (apps -> config -> env). Locally: set by scripts/dev.sh.
 ENDPOINT = os.environ.get(
     "LAKEBASE_ENDPOINT", "projects/matchmaker/branches/production/endpoints/primary"
 )

@@ -1,0 +1,96 @@
+# CI/CD for Matchmaker: GitHub runs the same bundle commands you'd run by hand.
+#
+#   Pull request into main  -> CI: run the tests, build the React app,
+#                              validate the bundle and show what deploy WOULD change.
+#   Merge (push) to main    -> CD: tests again, then deploy the prod target and restart
+#                              the app. Waits for a human to click "Approve" first,
+#                              because the job uses the "production" environment.
+#
+# Databricks login: the service principal "matchmaker-deployer" (a robot account),
+# using OAuth machine-to-machine. Its id and secret are GitHub repository secrets;
+# they never appear in this file.
+
+name: CI/CD
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+  workflow_dispatch: # a "Run workflow" button in the Actions tab
+
+# Never run two deploys at the same time.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+env:
+  DATABRICKS_HOST: https://dbc-f84e7376-c50f.cloud.databricks.com
+  DATABRICKS_CLIENT_ID: ${{ secrets.DATABRICKS_CLIENT_ID }}
+  DATABRICKS_CLIENT_SECRET: ${{ secrets.DATABRICKS_CLIENT_SECRET }}
+
+jobs:
+  test:
+    name: Tests + build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+      - name: Install Python packages
+        run: pip install -r requirements.txt -r requirements-dev.txt
+      - name: Run the API tests (no database needed)
+        run: pytest -v
+      - uses: actions/setup-node@v7
+        with:
+          node-version: "22"
+      - name: Type-check and build the React app
+        working-directory: frontend
+        run: |
+          npm ci
+          npm run build
+
+  plan:
+    name: Bundle validate + plan (prod)
+    if: github.event_name == 'pull_request'
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: databricks/setup-cli@v1.27.0
+      - uses: actions/setup-node@v7
+        with:
+          node-version: "22"
+      - name: Build the React app (the bundle uploads frontend/dist)
+        working-directory: frontend
+        run: npm ci && npm run build
+      - name: Validate the bundle
+        run: databricks bundle validate -t prod
+      - name: Show what deploy would change
+        run: databricks bundle plan -t prod
+
+  deploy:
+    name: Deploy to prod
+    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+    needs: test
+    runs-on: ubuntu-latest
+    environment: production # requires an approval click (Settings -> Environments)
+    steps:
+      - uses: actions/checkout@v7
+      - uses: databricks/setup-cli@v1.27.0
+      - uses: actions/setup-node@v7
+        with:
+          node-version: "22"
+      - name: Build the React app
+        working-directory: frontend
+        run: npm ci && npm run build
+      - name: Validate the bundle
+        run: databricks bundle validate -t prod
+      - name: Deploy (make the workspace match databricks.yml)
+        run: databricks bundle deploy -t prod
+      - name: Restart the app on the new code
+        run: databricks bundle run matchmaker -t prod

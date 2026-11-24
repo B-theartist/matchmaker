@@ -222,6 +222,8 @@ def search_consultants(
 def create_request(body: HelpRequestIn, caller: Caller = Depends(current_caller)):
     """Send a knowledge-sharing or technical-review request to a peer.
     The SENDER is always the signed-in caller - the browser can't choose it."""
+    if not body.message.strip():
+        raise HTTPException(422, "Message can't be blank")
     with db.transaction() as cur:
         sender_id = _my_consultant_id(cur, caller)
         if sender_id is None:
