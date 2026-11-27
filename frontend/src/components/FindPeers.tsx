@@ -48,10 +48,12 @@ export default function FindPeers({ onSent }: { onSent: () => void }) {
               <button className="primary" onClick={() => setAskingId(p.id)}>Request help</button>
             )}
           </div>
-          <p>{p.project_context || <span className="muted">No project context yet</span>}</p>
+          <p className="label">Currently working on</p>
+          <p className="context">{p.project_context || <span className="muted">Nothing listed yet</span>}</p>
+          <p className="label">Can help with</p>
           <div className="chips">
             {p.skills.map((s) => (
-              <span key={s.id} className={s.id === skillId ? "chip match" : "chip"}>{s.name}</span>
+              <span key={s.id} className={s.id === skillId ? "chip skill match" : "chip skill"}>{s.name}</span>
             ))}
           </div>
           {askingId === p.id && (

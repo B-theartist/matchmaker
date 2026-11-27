@@ -7,6 +7,7 @@
   --border: #d9dee5;
   --accent: #e8431f; /* close to Databricks orange */
   --accent-soft: #fdeae5;
+  --accent-text: #b5321a; /* darker orange: readable on the soft background */
   --ok: #157347;
   --err: #b42318;
   font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
@@ -34,6 +35,13 @@ label { display: flex; flex-direction: column; gap: 6px; font-weight: 500; font-
 label.inline { flex-direction: row; align-items: center; gap: 8px; }
 label.radio { font-weight: 400; }
 input, textarea, select { font: inherit; padding: 8px 10px; border: 1px solid var(--border); border-radius: 6px; background: #fff; color: var(--text); }
+input:focus-visible, textarea:focus-visible, select:focus-visible { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+/* Plain dropdowns: drop the browser's built-in look, draw our own small arrow. */
+select {
+  appearance: none; -webkit-appearance: none; cursor: pointer; min-width: 220px; padding-right: 34px;
+  background: #fff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1.5l5 5 5-5' fill='none' stroke='%23667085' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") no-repeat right 12px center;
+}
+.dev-switch { min-width: 0; }
 textarea { resize: vertical; }
 button { font: inherit; padding: 8px 14px; border-radius: 6px; border: 1px solid var(--border); background: #fff; cursor: pointer; }
 button.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
@@ -55,7 +63,11 @@ fieldset.choice legend { padding: 0; margin-bottom: 6px; font-weight: 500; font-
 .chips { display: flex; gap: 6px; flex-wrap: wrap; margin: 8px 0; }
 .chip { display: inline-flex; align-items: center; gap: 4px; padding: 3px 10px; border-radius: 999px; background: #eef1f5; font-size: 0.85rem; }
 .chip button { border: none; background: none; padding: 0 2px; cursor: pointer; }
-.chip.match { background: var(--accent-soft); color: var(--accent); font-weight: 600; }
+/* Skills are the point of the app, so they get the brand colour. */
+.chip.skill { background: var(--accent-soft); color: var(--accent-text); font-size: 0.95rem; font-weight: 500; padding: 5px 12px; }
+.chip.skill.match { background: var(--accent); color: #fff; font-weight: 600; } /* the skill you searched for */
+.label { margin: 14px 0 4px; font-size: 0.72rem; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); }
+.context { margin: 0; line-height: 1.45; }
 .chip.kind { background: #e7eefb; color: #1d4ed8; }
 .callout { background: var(--accent-soft); padding: 10px 12px; border-radius: 6px; margin: 0; }
 .message { white-space: pre-wrap; }
