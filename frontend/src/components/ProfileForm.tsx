@@ -72,7 +72,7 @@ export default function ProfileForm({ profile, onSaved }: Props) {
         Skills you can help with
         <div className="chips">
           {skills.map((s) => (
-            <span key={s} className="chip">
+            <span key={s} className="chip skill">
               {s}
               <button type="button" aria-label={`Remove ${s}`} onClick={() => setSkills(skills.filter((x) => x !== s))}>×</button>
             </span>

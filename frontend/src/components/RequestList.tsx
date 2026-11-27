@@ -31,7 +31,7 @@ export default function RequestList({ box }: { box: "inbox" | "sent" }) {
           </div>
           <div className="chips">
             <span className="chip kind">{KIND_LABEL[r.kind]}</span>
-            <span className="chip match">{r.skill.name}</span>
+            <span className="chip skill">{r.skill.name}</span>
           </div>
           <p className="message">{r.message}</p>
         </article>
