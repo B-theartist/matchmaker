@@ -39,7 +39,18 @@ button { font: inherit; padding: 8px 14px; border-radius: 6px; border: 1px solid
 button.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
 button:disabled { opacity: 0.6; cursor: default; }
 .row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
-.row input { flex: 1; min-width: 180px; }
+.row input:not([type="radio"]) { flex: 1; min-width: 180px; }
+.row.top { align-items: flex-start; gap: 16px; }
+.hint { margin: -6px 0 0; font-size: 0.85rem; }
+/* "Type of help": radio buttons that look like a two-option toggle */
+fieldset.choice { border: none; margin: 0; padding: 0; min-width: 0; }
+fieldset.choice legend { padding: 0; margin-bottom: 6px; font-weight: 500; font-size: 0.92rem; }
+.segmented { display: inline-flex; border: 1px solid var(--border); border-radius: 6px; overflow: hidden; }
+.segmented label { flex-direction: row; padding: 8px 14px; font-weight: 400; cursor: pointer; background: #fff; position: relative; }
+.segmented label + label { border-left: 1px solid var(--border); }
+.segmented label.active { background: var(--accent-soft); color: var(--accent); font-weight: 600; }
+.segmented input { position: absolute; opacity: 0; width: 1px; height: 1px; }
+.segmented label:has(input:focus-visible) { outline: 2px solid var(--accent); outline-offset: -2px; }
 .spread { justify-content: space-between; }
 .chips { display: flex; gap: 6px; flex-wrap: wrap; margin: 8px 0; }
 .chip { display: inline-flex; align-items: center; gap: 4px; padding: 3px 10px; border-radius: 999px; background: #eef1f5; font-size: 0.85rem; }

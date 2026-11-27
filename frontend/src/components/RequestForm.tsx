@@ -8,6 +8,11 @@ interface Props {
   onSent: () => void;
 }
 
+const KIND_HINT: Record<RequestKind, string> = {
+  knowledge_sharing: "A quick chat or walkthrough so you can learn how they did it.",
+  technical_review: "Ask them to look over your design, code or pipeline and give feedback.",
+};
+
 // Sends one help request. The browser chooses WHO (recipient), WHICH skill, WHAT kind and
 // the message. It never sends the sender - the backend takes that from the sign-in.
 export default function RequestForm({ recipient, defaultSkillId, onCancel, onSent }: Props) {
@@ -40,20 +45,27 @@ export default function RequestForm({ recipient, defaultSkillId, onCancel, onSen
 
   return (
     <form className="form nested" onSubmit={send}>
-      <div className="row">
-        <label className="inline">
+      <div className="row top">
+        <label>
           Topic
           <select value={skillId} onChange={(e) => setSkillId(Number(e.target.value))}>
             {recipient.skills.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
           </select>
         </label>
-        {(Object.keys(KIND_LABEL) as RequestKind[]).map((k) => (
-          <label key={k} className="inline radio">
-            <input type="radio" name="kind" checked={kind === k} onChange={() => setKind(k)} />
-            {KIND_LABEL[k]}
-          </label>
-        ))}
+        {/* Two real radio buttons (keyboard + screen-reader friendly), styled as a toggle. */}
+        <fieldset className="choice">
+          <legend>Type of help</legend>
+          <div className="segmented">
+            {(Object.keys(KIND_LABEL) as RequestKind[]).map((k) => (
+              <label key={k} className={kind === k ? "active" : ""}>
+                <input type="radio" name="kind" value={k} checked={kind === k} onChange={() => setKind(k)} />
+                {KIND_LABEL[k]}
+              </label>
+            ))}
+          </div>
+        </fieldset>
       </div>
+      <p className="muted hint">{KIND_HINT[kind]}</p>
       <label>
         Message to {recipient.display_name}
         <textarea
